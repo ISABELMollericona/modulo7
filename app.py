@@ -797,7 +797,7 @@ def resumen_ejecutivo(
       salario_max,
     )
 
-    cur.execute(f"""
+    query_competitividad = """
       WITH benchmark_externo_tiempo AS (
         SELECT
           b.TiempoKey,
@@ -836,11 +836,11 @@ def resumen_ejecutivo(
          AND n.TiempoKey = bet.TiempoKey
       LEFT JOIN benchmark_externo_puesto bep
         ON n.PuestoKey = bep.PuestoKey
-        WHERE {where_clause};
-    """, params)
+        WHERE """ + where_clause + ";"
+    cur.execute(query_competitividad, params)
     comp = cur.fetchone()
 
-    cur.execute(f"""
+    query_beneficios = """
       SELECT COALESCE(SUM(n.Beneficios), 0)
       FROM Fact_Nomina n
       INNER JOIN DimEmpresa ei ON n.EmpresaKey = ei.EmpresaKey
@@ -848,11 +848,11 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE {where_clause};
-    """, params)
+      WHERE """ + where_clause + ";"
+    cur.execute(query_beneficios, params)
     ben = cur.fetchone()
 
-    cur.execute(f"""
+    query_bonos = """
       SELECT COALESCE(SUM(n.Bono), 0)
       FROM Fact_Nomina n
       INNER JOIN DimEmpresa ei ON n.EmpresaKey = ei.EmpresaKey
@@ -860,11 +860,11 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE {where_clause};
-    """, params)
+      WHERE """ + where_clause + ";"
+    cur.execute(query_bonos, params)
     bon = cur.fetchone()
 
-    cur.execute(f"""
+    query_headcount = """
       SELECT COUNT(*)
       FROM Fact_Nomina n
       INNER JOIN DimEmpresa ei ON n.EmpresaKey = ei.EmpresaKey
@@ -872,12 +872,13 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE {where_clause}
+      WHERE """ + where_clause + """
         AND n.FlagActivo = TRUE;
-    """, params)
+    """
+    cur.execute(query_headcount, params)
     headcount = cur.fetchone()
 
-    cur.execute(f"""
+    query_salario_prom = """
         SELECT COALESCE(AVG(
         COALESCE(n.SalarioBase,0) + COALESCE(n.Bono,0) + COALESCE(n.Beneficios,0)
       ), 0)
@@ -887,9 +888,10 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE {where_clause}
+      WHERE """ + where_clause + """
         AND n.FlagActivo = TRUE;
-    """, params)
+    """
+    cur.execute(query_salario_prom, params)
     salario_prom = cur.fetchone()
 
     cur.close()
