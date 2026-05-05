@@ -321,10 +321,24 @@ def grafica_beneficios(empresa_key: int | None = None):
         deptos = [r[0] for r in data]
         valores = [float(r[1] or 0) for r in data]
 
-        fig = go.Figure()
-        fig.add_bar(x=deptos, y=valores)
+        # Normalizar respecto a la media para resaltar diferencias (media = 1)
+        avg = sum(valores) / len(valores) if valores else 1
+        ratios = [ (v / avg) if avg else 0 for v in valores ]
 
-        fig.update_layout(title="Beneficios por Departamento")
+        fig = go.Figure(data=[
+          go.Bar(
+            x=deptos,
+            y=ratios,
+            marker_color='#6ea0ff',
+            customdata=valores,
+            hovertemplate='%{x}<br>Ratio: %{y:.2f}x<br>Beneficios: $%{customdata:,.0f}<extra></extra>'
+          )
+        ])
+
+        fig.update_layout(
+          title="Beneficios por Departamento",
+          yaxis=dict(title='Relativo (media=1)', range=[1, 1.5])
+        )
 
         html = fig.to_html(full_html=False, include_plotlyjs=False)
 
