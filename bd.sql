@@ -542,6 +542,55 @@ COMMENT ON COLUMN Fact_Nomina.FlagNuevoIngreso IS 'Flag: TRUE si el empleado ing
 COMMENT ON COLUMN Fact_Nomina.FlagJubilacionProxima IS 'Flag: TRUE si la edad del empleado supera el umbral de jubilación.';
 
 -- ────────────────────────────────────────────────────────────
+-- AJUSTE DE BONOS PARA DATOS DE MUESTRA
+-- Ejecutar después de cargar Fact_Nomina para que los bonos no
+-- queden casi iguales en toda la base.
+-- ────────────────────────────────────────────────────────────
+WITH bono_calculado AS (
+    SELECT
+        n.FactNominaKey,
+        ROUND(
+            (
+                CASE
+                    WHEN COALESCE(n.SalarioBase, 0) <= 2500 THEN COALESCE(n.SalarioBase, 0) * 0.34
+                    WHEN COALESCE(n.SalarioBase, 0) <= 4500 THEN COALESCE(n.SalarioBase, 0) * 0.29
+                    WHEN COALESCE(n.SalarioBase, 0) <= 7000 THEN COALESCE(n.SalarioBase, 0) * 0.25
+                    WHEN COALESCE(n.SalarioBase, 0) <= 10000 THEN COALESCE(n.SalarioBase, 0) * 0.21
+                    ELSE COALESCE(n.SalarioBase, 0) * 0.17
+                END
+                + (n.FactNominaKey % 11) * 85
+                + (n.EmpleadoKey % 9) * 21
+                + CASE
+                    WHEN COALESCE(p.NivelJerarquico, '') ILIKE '%Director%' THEN 900
+                    WHEN COALESCE(p.NivelJerarquico, '') ILIKE '%Gerente%' THEN 620
+                    WHEN COALESCE(p.NivelJerarquico, '') ILIKE '%Líder%' THEN 380
+                    WHEN COALESCE(p.NivelJerarquico, '') ILIKE '%Senior%' THEN 220
+                    ELSE 110
+                  END
+                + CASE
+                    WHEN COALESCE(d.NombreDepartamento, '') IN ('Tecnología', 'Ventas') THEN 240
+                    WHEN COALESCE(d.NombreDepartamento, '') IN ('Finanzas', 'Dirección') THEN 180
+                    WHEN COALESCE(d.NombreDepartamento, '') = 'Recursos Humanos' THEN 140
+                    WHEN COALESCE(d.NombreDepartamento, '') = 'Operaciones' THEN 120
+                    ELSE 90
+                  END
+            )::numeric,
+            2
+        ) AS BonoNuevo
+    FROM Fact_Nomina n
+    LEFT JOIN DimPuesto p
+        ON n.PuestoKey = p.PuestoKey
+    LEFT JOIN DimDepartamento d
+        ON n.DepartamentoKey = d.DepartamentoKey
+)
+UPDATE Fact_Nomina n
+SET
+    Bono = bc.BonoNuevo,
+    CostoTotalNomina = ROUND(COALESCE(n.SalarioBase, 0) + bc.BonoNuevo + COALESCE(n.Beneficios, 0), 2)
+FROM bono_calculado bc
+WHERE n.FactNominaKey = bc.FactNominaKey;
+
+-- ────────────────────────────────────────────────────────────
 -- Fact_Capacitacion
 -- ────────────────────────────────────────────────────────────
 COMMENT ON TABLE Fact_Capacitacion IS 'Tabla fact del Equipo 3: Formación y Desarrollo. Grano: 1 empleado × 1 curso × 1 fecha. Registra la participación, costo y resultados de capacitación.';
