@@ -802,7 +802,7 @@ def resumen_ejecutivo(
         INNER JOIN DimEmpresa eb ON b.EmpresaKey = eb.EmpresaKey
         WHERE COALESCE(eb.EsEmpresaPropia, FALSE) = FALSE
         GROUP BY b.PuestoKey
-    conn = get_connection() 
+      )
         SELECT COALESCE(
             AVG(
                 CASE 
