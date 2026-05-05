@@ -166,7 +166,7 @@ def build_filter_where(empresa_key: int | None, departamento: str | None, puesto
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     return where_clause, tuple(params)
 
-  def inject_where_clause(sql_template: str, where_clause: str) -> str:
+      def inject_where_clause(sql_template: str, where_clause: str) -> str:
     return sql_template.replace("/*WHERE_CLAUSE*/", where_clause)
 
 
