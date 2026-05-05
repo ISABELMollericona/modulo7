@@ -166,6 +166,9 @@ def build_filter_where(empresa_key: int | None, departamento: str | None, puesto
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     return where_clause, tuple(params)
 
+  def inject_where_clause(sql_template: str, where_clause: str) -> str:
+    return sql_template.replace("/*WHERE_CLAUSE*/", where_clause)
+
 
 # ======================================================
 # 📊 KPI COMPENSACIÓN
@@ -797,7 +800,7 @@ def resumen_ejecutivo(
       salario_max,
     )
 
-    query_competitividad = """
+    query_competitividad = inject_where_clause("""
       WITH benchmark_externo_tiempo AS (
         SELECT
           b.TiempoKey,
@@ -836,11 +839,12 @@ def resumen_ejecutivo(
          AND n.TiempoKey = bet.TiempoKey
       LEFT JOIN benchmark_externo_puesto bep
         ON n.PuestoKey = bep.PuestoKey
-        WHERE """ + where_clause + ";"
+        WHERE /*WHERE_CLAUSE*/;
+      """, where_clause)
     cur.execute(query_competitividad, params)
     comp = cur.fetchone()
 
-    query_beneficios = """
+    query_beneficios = inject_where_clause("""
       SELECT COALESCE(SUM(n.Beneficios), 0)
       FROM Fact_Nomina n
       INNER JOIN DimEmpresa ei ON n.EmpresaKey = ei.EmpresaKey
@@ -848,11 +852,12 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE """ + where_clause + ";"
+      WHERE /*WHERE_CLAUSE*/;
+    """, where_clause)
     cur.execute(query_beneficios, params)
     ben = cur.fetchone()
 
-    query_bonos = """
+    query_bonos = inject_where_clause("""
       SELECT COALESCE(SUM(n.Bono), 0)
       FROM Fact_Nomina n
       INNER JOIN DimEmpresa ei ON n.EmpresaKey = ei.EmpresaKey
@@ -860,11 +865,12 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE """ + where_clause + ";"
+      WHERE /*WHERE_CLAUSE*/;
+    """, where_clause)
     cur.execute(query_bonos, params)
     bon = cur.fetchone()
 
-    query_headcount = """
+    query_headcount = inject_where_clause("""
       SELECT COUNT(*)
       FROM Fact_Nomina n
       INNER JOIN DimEmpresa ei ON n.EmpresaKey = ei.EmpresaKey
@@ -872,13 +878,13 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE """ + where_clause + """
+      WHERE /*WHERE_CLAUSE*/
         AND n.FlagActivo = TRUE;
-    """
+    """, where_clause)
     cur.execute(query_headcount, params)
     headcount = cur.fetchone()
 
-    query_salario_prom = """
+    query_salario_prom = inject_where_clause("""
         SELECT COALESCE(AVG(
         COALESCE(n.SalarioBase,0) + COALESCE(n.Bono,0) + COALESCE(n.Beneficios,0)
       ), 0)
@@ -888,9 +894,9 @@ def resumen_ejecutivo(
       LEFT JOIN DimPuesto p ON n.PuestoKey = p.PuestoKey
       LEFT JOIN DimDepartamento d ON n.DepartamentoKey = d.DepartamentoKey
       LEFT JOIN DimSucursal s ON n.SucursalKey = s.SucursalKey
-      WHERE """ + where_clause + """
+      WHERE /*WHERE_CLAUSE*/
         AND n.FlagActivo = TRUE;
-    """
+    """, where_clause)
     cur.execute(query_salario_prom, params)
     salario_prom = cur.fetchone()
 
